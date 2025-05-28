@@ -51,6 +51,17 @@ logging.basicConfig(
     ]
 )
 
+def is_within_active_hours(now, start_hour, end_hour):
+    """
+    Returns True if the current hour is within the defined active hours.
+    Handles wrap-around midnight ranges (e.g., 22 to 6).
+    """
+    if start_hour < end_hour:
+        return start_hour <= now.hour < end_hour
+    else:
+        return now.hour >= start_hour or now.hour < end_hour
+
+
 # 🏩 Codex of Deeds
 CODEX_OF_DEEDS = {
     "Chapter IV, Line 42": "*Only the Originator of a Quest may seal its fate.*"
@@ -287,13 +298,17 @@ async def on_command_error(ctx, error):
 async def on_error(event, *args, **kwargs):
     logging.error(f"⚠️ A disturbance has rippled through the aether! Event: {event}, Args: {args}, Kwargs: {kwargs}")
 
+
 async def time_guard():
-    tz = pytz.timezone("Asia/Manila")
+    tz = pytz.timezone(os.getenv("TIMEZONE", "Asia/Manila"))
+    start_hour = int(os.getenv("ACTIVE_HOURS_START", 8))
+    end_hour = int(os.getenv("ACTIVE_HOURS_END", 0))  # Midnight wrap-around supported
+
     while True:
         now = datetime.datetime.now(tz)
-        if now.hour < 8 or now.hour >= 24:
+        if not is_within_active_hours(now, start_hour, end_hour):
             logging.info("🌘 The stars have dimmed and the veil of rest descends. Om’EL returns to slumber until the next dawn.")
-            await bot.close()  # or sys.exit() if not running in a bot context
+            await bot.close()
             break
         await asyncio.sleep(300)  # Check every 5 minutes
 
