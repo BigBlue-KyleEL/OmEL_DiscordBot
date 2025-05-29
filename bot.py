@@ -299,6 +299,7 @@ async def on_error(event, *args, **kwargs):
 
 
 async def time_guard():
+    print("[DEBUG] Om'EL is alive!")
     tz = pytz.timezone(os.getenv("TIMEZONE", "Asia/Manila"))
     start_hour = int(os.getenv("ACTIVE_HOURS_START", 8))
     end_hour = int(os.getenv("ACTIVE_HOURS_END", 0))  # Midnight wrap-around supported
@@ -315,8 +316,7 @@ async def time_guard():
 # Initialize the database when the bot starts
 initialize_db()
 
-if __name__ == "__main__":
-    try:
-        asyncio.run(bot.start(TOKEN))
-    except KeyboardInterrupt:
-        asyncio.run(bot.close())
+try:
+    asyncio.run(bot.start(TOKEN))
+except KeyboardInterrupt:
+    asyncio.run(bot.close())
