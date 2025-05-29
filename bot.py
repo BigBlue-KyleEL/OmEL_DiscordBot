@@ -240,7 +240,12 @@ class QuestBoard(View):
 @bot.event
 async def on_ready():
     # Schedule the background guard check
-    asyncio.create_task(time_guard())
+    try:
+        print("[DEBUG] Calling time_guard() now...")
+        await time_guard()
+        print("[DEBUG] Returned from time_guard()")
+    except Exception as e:
+        print(f"[ERROR] time_guard crashed: {e}")
     print(f"✅ Om'El has awakened as {bot.user}!")
     logging.info(f"✅ Om’EL has awakened as {bot.user} at {datetime.datetime.now()}")
 
@@ -308,11 +313,15 @@ async def time_guard():
 
     while True:
         now = datetime.datetime.now(tz)
-        if not is_within_active_hours(now, start_hour, end_hour):
-            logging.info("🌘 The stars have dimmed and the veil of rest descends. Om’EL returns to slumber until the next dawn.")
-            await bot.close()
+        if is_within_active_hours(now, start_hour, end_hour):
+            print(f"[DEBUG] It's {now.time()}. Within active hours, Om'EL may rise.")
             break
-        await asyncio.sleep(300)  # Check every 5 minutes
+        else:
+            logging.info(
+                "🌘 The stars have dimmed and the veil of rest descends. Om’EL returns to slumber until the next dawn.")
+            logging.info(f"🌘 It is {now.time()}, outside of Om'EL's active hours. Sleeping 5 min...")
+            await asyncio.sleep(300)  # Sleep and retry
+
 
 
 # Initialize the database when the bot starts
