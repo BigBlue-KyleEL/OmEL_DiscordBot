@@ -318,9 +318,5 @@ async def time_guard():
 # Initialize the database when the bot starts
 initialize_db()
 
-try:
-    print("[DEBUG] About to start Om'EL...")
-    asyncio.run(bot.start(TOKEN))
-    print("[DEBUG] Om'EL bot.start() completed")
-except Exception as e:
-    print(f"[ERROR] Om'EL failed to start: {e}")
+
+bot.start(TOKEN)
