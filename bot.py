@@ -23,6 +23,8 @@ EDICTS_CHANNEL_ID = int(os.getenv("EDICTS_CHANNEL_ID"))
 HALL_OF_DEEDS_CHANNEL_ID = int(os.getenv("HALL_OF_DEEDS_CHANNEL_ID"))
 OATHBOUND_SCROLLS_CHANNEL_ID = int(os.getenv("OATHBOUND_SCROLLS_CHANNEL_ID"))
 
+print("[BOOT] Om'EL script is starting up...")
+
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -317,6 +319,8 @@ async def time_guard():
 initialize_db()
 
 try:
+    print("[DEBUG] About to start Om'EL...")
     asyncio.run(bot.start(TOKEN))
-except KeyboardInterrupt:
-    asyncio.run(bot.close())
+    print("[DEBUG] Om'EL bot.start() completed")
+except Exception as e:
+    print(f"[ERROR] Om'EL failed to start: {e}")
