@@ -69,21 +69,8 @@ CODEX_OF_DEEDS = {
     "Chapter IV, Line 42": "*Only the Originator of a Quest may seal its fate.*"
 }
 
-def get_codex_rule(chapter_line: str) -> str:
-    rule = CODEX_OF_DEEDS.get(chapter_line)
-    if rule:
-        delivery_styles = [
-            f"📚 *Based on the Sacred Codex of Deeds, {chapter_line}:*\n\n{rule}\n\n⚖️ Om'El’s voice echoes with authority.",
-            f"📖 *As etched in the Codex of Deeds, {chapter_line}:*\n\n{rule}\n\n🔯 Om'El speaks in solemn tones.",
-            f"🨶 *By decree of the Codex, {chapter_line}:*\n\n{rule}\n\n💫 The air stills as Om'El utters the law."
-        ]
-        import random
-        return random.choice(delivery_styles)
-    else:
-        return "📖 This passage of the Codex remains unwritten... for now."
-
 class QuestModal(Modal, title="Enscribe Your Quest"):
-    quest_title = TextInput(label="Quest Title", placeholder="Name the call to action…")
+    quest_title = TextInput(label="Quest Title",  max_length=45, placeholder="Name the call to action…")
     quest_description = TextInput(label="Quest Description", style=discord.TextStyle.paragraph, placeholder="Detail the nature of your Quest…")
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -128,7 +115,7 @@ class QuestActionButtons(View):
         self.claimed_by.append(user)
 
         # Store claimant in the database
-        add_claimant(interaction.message.id, interaction.user.id, interaction.user.display_name)
+        add_claimant(interaction.message.id, interaction.user.id, interaction.user.global_name or interaction.user.name)
 
         # Update button label
         self.update_claim_button_label()
@@ -239,13 +226,6 @@ class QuestBoard(View):
 
 @bot.event
 async def on_ready():
-    # Schedule the background guard check
-    try:
-        print("[DEBUG] Calling time_guard() now...")
-        await time_guard()
-        print("[DEBUG] Returned from time_guard()")
-    except Exception as e:
-        print(f"[ERROR] time_guard crashed: {e}")
     print(f"✅ Om'El has awakened as {bot.user}!")
     logging.info(f"✅ Om’EL has awakened as {bot.user} at {datetime.datetime.now()}")
 
@@ -255,7 +235,10 @@ async def on_ready():
 
     channel = bot.get_channel(EDICTS_CHANNEL_ID)
     if channel:
-        await channel.purge(limit=10)
+        def is_own_message(msg):
+            return msg.author == bot.user
+
+        await channel.purge(limit=10, check=is_own_message)
         welcome_embed = discord.Embed(
             title="📜 Hearken, Seekers of Purpose!",
             description=(
@@ -306,26 +289,25 @@ async def on_error(event, *args, **kwargs):
 
 
 async def time_guard():
-    print("[DEBUG] Om'EL is alive!")
-    tz = pytz.timezone(os.getenv("TIMEZONE", "Asia/Manila"))
-    start_hour = int(os.getenv("ACTIVE_HOURS_START", 8))
-    end_hour = int(os.getenv("ACTIVE_HOURS_END", 0))  # Midnight wrap-around supported
-
+    tz = pytz.timezone("Asia/Manila")
     while True:
         now = datetime.datetime.now(tz)
-        if is_within_active_hours(now, start_hour, end_hour):
-            print(f"[DEBUG] It's {now.time()}. Within active hours, Om'EL may rise.")
-            break
-        else:
-            logging.info(
-                "🌘 The stars have dimmed and the veil of rest descends. Om’EL returns to slumber until the next dawn.")
-            logging.info(f"🌘 It is {now.time()}, outside of Om'EL's active hours. Sleeping 5 min...")
-            await asyncio.sleep(300)  # Sleep and retry
+        if now.hour == 0 and now.minute == 0:  # Exact midnight  # Exactly midnight
+            logging.info("🛑 Midnight shutdown triggered")
+            await bot.close()
+            await asyncio.sleep(2)  # Let Discord clean up connections
+            sys.exit(0)
+        await asyncio.sleep(60)
 
 
+async def main():
+    try:
+        initialize_db()
+        asyncio.create_task(time_guard())
+        await bot.start(TOKEN)
+    except Exception as e:
+        logging.critical(f"Fatal error: {e}")
+        sys.exit(1)  # Ensure Railway knows it crashed
 
-# Initialize the database when the bot starts
-initialize_db()
-
-
-bot.start(TOKEN)
+if __name__ == "__main__":
+    asyncio.run(main())
