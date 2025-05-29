@@ -237,11 +237,10 @@ class QuestBoard(View):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Om'El has awakened as {bot.user}!")
-    logging.info(f"✅ Om’EL has awakened as {bot.user} at {datetime.datetime.now()}")
-
     # Schedule the background guard check
     asyncio.create_task(time_guard())
+    print(f"✅ Om'El has awakened as {bot.user}!")
+    logging.info(f"✅ Om’EL has awakened as {bot.user} at {datetime.datetime.now()}")
 
     # Register persistent views
     bot.add_view(QuestBoard())  # for the main "Enscribe a New Quest" button
@@ -316,4 +315,8 @@ async def time_guard():
 # Initialize the database when the bot starts
 initialize_db()
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    try:
+        asyncio.run(bot.start(TOKEN))
+    except KeyboardInterrupt:
+        asyncio.run(bot.close())
