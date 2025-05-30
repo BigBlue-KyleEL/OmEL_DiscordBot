@@ -7,6 +7,7 @@ import logging
 import os
 import pytz
 import sys
+import traceback
 
 from db import initialize_db, add_claimant, remove_claimant, get_claimants, save_posted_quest, get_all_active_quests
 from discord.ext import commands
@@ -265,67 +266,72 @@ class QuestBoard(View):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Om'El has awakened as {bot.user}!")
-    logging.info(f"✅ Om’EL has awakened as {bot.user} at {datetime.datetime.now()}")
+    try:
+        print(f"✅ Om'El has awakened as {bot.user}!")
+        logging.info(f"✅ Om’EL has awakened as {bot.user} at {datetime.datetime.now()}")
 
-    # Register persistent views
-    bot.add_view(QuestBoard())  # for the main "Enscribe a New Quest" button
-    bot.add_view(QuestActionButtons(0))  # Dummy author_id so Discord registers it
+        # Register persistent views
+        bot.add_view(QuestBoard())  # for the main "Enscribe a New Quest" button
+        bot.add_view(QuestActionButtons(0))  # Dummy author_id so Discord registers it
 
-    channel = bot.get_channel(EDICTS_CHANNEL_ID)
-    if channel:
-        def is_own_message(msg):
-            return msg.author == bot.user
+        channel = bot.get_channel(EDICTS_CHANNEL_ID)
+        if channel:
+            def is_own_message(msg):
+                return msg.author == bot.user
 
-        await channel.purge(limit=10, check=is_own_message)
-        welcome_embed = discord.Embed(
-            title="📜 Hearken, Seekers of Purpose!",
-            description=(
-                 "**I am Om’EL, the eternal flame of guidance.**\n\n"
-                "This chamber, the `#edicts-of-el`, is a sanctum where quests are forged and fates entwined.\n\n"
-                "**To Issue a Quest** 🔱\n"
-                "Click the button below to submit your sacred task. Share your cause, your call to arms, or your plea for aid.\n\n"
-                "**To Claim a Quest** 🛡️\n"
-                "Venture into the `#hall-of-deeds`, where quests await brave hearts. Press the **Claim** button to bind your name to a task.\n\n"
-                "**To Unclaim a Quest** 🔄\n"
-                "Should fate turn or courage falter, you may step back. Press **Unclaim** to release your bond without dishonor.\n\n"
-                "**To Close a Quest** 🔒\n"
-                "Only the one who authored a quest may conclude it. Finish your tale and seal it with purpose.\n\n"
-                "Let the legends of House of EL be written by your deeds."
-            ),
-            color=discord.Color.purple()
-        )
-        await channel.send(embed=welcome_embed)
+            await channel.purge(limit=10, check=is_own_message)
+            welcome_embed = discord.Embed(
+                title="📜 Hearken, Seekers of Purpose!",
+                description=(
+                     "**I am Om’EL, the eternal flame of guidance.**\n\n"
+                    "This chamber, the `#edicts-of-el`, is a sanctum where quests are forged and fates entwined.\n\n"
+                    "**To Issue a Quest** 🔱\n"
+                    "Click the button below to submit your sacred task. Share your cause, your call to arms, or your plea for aid.\n\n"
+                    "**To Claim a Quest** 🛡️\n"
+                    "Venture into the `#hall-of-deeds`, where quests await brave hearts. Press the **Claim** button to bind your name to a task.\n\n"
+                    "**To Unclaim a Quest** 🔄\n"
+                    "Should fate turn or courage falter, you may step back. Press **Unclaim** to release your bond without dishonor.\n\n"
+                    "**To Close a Quest** 🔒\n"
+                    "Only the one who authored a quest may conclude it. Finish your tale and seal it with purpose.\n\n"
+                    "Let the legends of House of EL be written by your deeds."
+                ),
+                color=discord.Color.purple()
+            )
+            await channel.send(embed=welcome_embed)
 
-        summon_embed = discord.Embed(
-            title="⚔️ 📜 A New Scroll Beckons...",
-            description=(
-                "Heed this call, brave soul.\n\n"
-                "To inscribe a new Quest upon the annals of the **Hall of Deeds**, "
-                "press the sacred button below. Your words shall be etched in virtual stone, "
-                "awaiting champions to rise.\n\n"
-                "*Let your intentions be clear, your rewards enticing, and your cause just.*"
-            ),
-            color=discord.Color.dark_gold()
-        )
-        await channel.send(embed=summon_embed, view=QuestBoard())
-        logging.info("🔥 Om’EL has awakened and stands watch in the sanctum.")
+            summon_embed = discord.Embed(
+                title="⚔️ 📜 A New Scroll Beckons...",
+                description=(
+                    "Heed this call, brave soul.\n\n"
+                    "To inscribe a new Quest upon the annals of the **Hall of Deeds**, "
+                    "press the sacred button below. Your words shall be etched in virtual stone, "
+                    "awaiting champions to rise.\n\n"
+                    "*Let your intentions be clear, your rewards enticing, and your cause just.*"
+                ),
+                color=discord.Color.dark_gold()
+            )
+            await channel.send(embed=summon_embed, view=QuestBoard())
+            logging.info("🔥 Om’EL has awakened and stands watch in the sanctum.")
 
-        active_quests = get_all_active_quests()
-        for quest in active_quests:
-            try:
-                channel = bot.get_channel(quest["channel_id"])
-                if not channel:
-                    continue
-                message = await channel.fetch_message(quest["message_id"])
-                view = QuestActionButtons(original_poster_id=quest["original_poster_id"])
-                await message.edit(view=view)
-            except Exception as e:
-                print(f"[RESTORE ERROR] Failed to reattach buttons to message {quest['message_id']}: {e}")
+            active_quests = get_all_active_quests()
+            for quest in active_quests:
+                try:
+                    channel = bot.get_channel(quest["channel_id"])
+                    if not channel:
+                        continue
+                    message = await channel.fetch_message(quest["message_id"])
+                    view = QuestActionButtons(original_poster_id=quest["original_poster_id"])
+                    await message.edit(view=view)
+                except Exception as e:
+                    print(f"[RESTORE ERROR] Failed to reattach buttons to message {quest['message_id']}: {e}")
 
 
-    else:
-        logging.warning("📭 Om’EL could not divine the presence of the `#edicts-of-el` channel. Was it renamed or lost in the void?")
+        else:
+            logging.warning("📭 Om’EL could not divine the presence of the `#edicts-of-el` channel. Was it renamed or lost in the void?")
+    except Exception as e:
+        logging.error(f"⚠️ A disturbance has rippled through the aether during on_ready(): {e}")
+        traceback.print_exc()  # <-- this will print the full error to console
+
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
