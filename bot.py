@@ -8,7 +8,7 @@ import os
 import pytz
 import sys
 
-from db import initialize_db, add_claimant, remove_claimant, get_claimants
+from db import initialize_db, add_claimant, remove_claimant, get_claimants, save_posted_quest, get_all_active_quests
 from discord.ext import commands
 from discord.ui import View, Button, Modal, TextInput
 from dotenv import load_dotenv
@@ -78,12 +78,18 @@ class QuestModal(Modal, title="Enscribe Your Quest"):
         embed = discord.Embed(title=self.quest_title.value, description=self.quest_description.value, color=discord.Color.gold())
         embed.set_author(name=f"{interaction.user.display_name} has posted a Quest!", icon_url=interaction.user.display_avatar.url)
         view = QuestActionButtons(interaction.user.id)
-        await hall_of_deeds.send(embed=embed, view=view)
+        msg = await hall_of_deeds.send(embed=embed, view=view)
+        save_posted_quest(
+            message_id=msg.id,
+            author_id=interaction.user.id,
+            channel_id=hall_of_deeds.id
+        )
         await interaction.response.send_message("🨶 Your Quest has been inscribed upon the Hall of Deeds.", ephemeral=True)
 
 class QuestActionButtons(View):
-    def __init__(self, author_id):
+    def __init__(self, message_id: int, author_id: int):
         super().__init__(timeout=None)
+        self.message_id = message_id
         self.author_id = author_id
         self.claimed_by = []
         self.claim_button = Button(
@@ -304,6 +310,20 @@ async def on_ready():
         )
         await channel.send(embed=summon_embed, view=QuestBoard())
         logging.info("🔥 Om’EL has awakened and stands watch in the sanctum.")
+
+        active_quests = get_all_active_quests()
+        for quest in active_quests:
+            try:
+                channel = bot.get_channel(quest["channel_id"])
+                if not channel:
+                    continue
+                message = await channel.fetch_message(quest["message_id"])
+                view = QuestActionButtons(original_poster_id=quest["original_poster_id"])
+                await message.edit(view=view)
+            except Exception as e:
+                print(f"[RESTORE ERROR] Failed to reattach buttons to message {quest['message_id']}: {e}")
+
+
     else:
         logging.warning("📭 Om’EL could not divine the presence of the `#edicts-of-el` channel. Was it renamed or lost in the void?")
 

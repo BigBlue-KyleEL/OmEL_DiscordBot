@@ -16,13 +16,12 @@ def initialize_db():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS quest_claimants (
-            quest_message_id BIGINT,
-            user_id BIGINT,
-            display_name TEXT,
-            PRIMARY KEY (quest_message_id, user_id)
-        );
-    """)
+            CREATE TABLE IF NOT EXISTS active_quests (
+                message_id BIGINT PRIMARY KEY,
+                author_id BIGINT NOT NULL,
+                channel_id BIGINT NOT NULL
+            );
+        """)
     conn.commit()
     cur.close()
     conn.close()
@@ -64,3 +63,35 @@ def get_claimants(quest_message_id: int):
     cur.close()
     conn.close()
     return [row['display_name'] for row in rows]
+
+def save_posted_quest(message_id: int, author_id: int, channel_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO active_quests (message_id, author_id, channel_id)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (message_id) DO NOTHING;
+    """, (message_id, author_id, channel_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_all_active_quests():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT message_id, author_id, channel_id FROM active_quests;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def delete_posted_quest(message_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM active_quests WHERE message_id = %s;", (message_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
