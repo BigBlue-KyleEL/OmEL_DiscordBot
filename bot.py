@@ -300,20 +300,38 @@ async def on_error(event, *args, **kwargs):
 
 
 async def time_guard():
-    tz = pytz.timezone(os.getenv("TIMEZONE", "Asia/Manila"))
-    start_hour = int(os.getenv("ACTIVE_HOURS_START", 8))
-    end_hour = int(os.getenv("ACTIVE_HOURS_END", 0))  # Midnight wrap-around supported
+    tz = pytz.timezone("Asia/Manila")
+    startup_time = datetime.datetime.now(tz)
+
+    # Avoid immediate shutdown if starting at midnight
+    if startup_time.hour == 0 and startup_time.minute <= 1:
+        await asyncio.sleep(120)
 
     while True:
         now = datetime.datetime.now(tz)
-        if not is_within_active_hours(now, start_hour, end_hour):
+        if now.hour == 0 and now.minute == 0:  # Exactly midnight
             logging.info("🌘 The stars have dimmed and the veil of rest descends. Om’EL returns to slumber until the next dawn.")
             await bot.close()
-            break
-        await asyncio.sleep(300)  # Check every 5 minutes
+            await asyncio.sleep(2)
+            sys.exit(0)
+
+        # Check more frequently near midnight (every 30 sec)
+        # Otherwise check every 5 minutes
+        sleep_time = 30 if now.hour in [23, 0] else 300
+        await asyncio.sleep(sleep_time)
 
 
-# Initialize the database when the bot starts
-initialize_db()
+async def main():
+    try:
+        initialize_db()
+        asyncio.create_task(time_guard())
+        await bot.start(TOKEN)
+    except discord.LoginError:
+        logging.critical("❌ Invalid bot token")
+        sys.exit(1)
+    except Exception as e:
+        logging.critical(f"💀 Fatal error: {str(e)}", exc_info=True)
+        sys.exit(1)
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    asyncio.run(main())
