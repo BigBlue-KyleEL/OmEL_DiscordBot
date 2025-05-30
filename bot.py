@@ -288,26 +288,37 @@ async def on_error(event, *args, **kwargs):
     logging.error(f"⚠️ A disturbance has rippled through the aether! Event: {event}, Args: {args}, Kwargs: {kwargs}")
 
 
+# Updated time_guard()
 async def time_guard():
     tz = pytz.timezone("Asia/Manila")
+    startup_time = datetime.datetime.now(tz)
+    if startup_time.hour == 0 and startup_time.minute <= 1:
+        await asyncio.sleep(120)  # Avoid immediate shutdown
+
     while True:
         now = datetime.datetime.now(tz)
-        if now.hour == 0 and now.minute == 0:  # Exact midnight  # Exactly midnight
-            logging.info("🛑 Midnight shutdown triggered")
+        if now.hour == 0 and now.minute == 0:
+            logging.info("🌘 Midnight shutdown initiated")
             await bot.close()
-            await asyncio.sleep(2)  # Let Discord clean up connections
+            await asyncio.sleep(2)
             sys.exit(0)
-        await asyncio.sleep(60)
+
+        sleep_time = 300 if now.hour not in [23, 0] else 30
+        await asyncio.sleep(sleep_time)
 
 
+# Enhanced main()
 async def main():
     try:
         initialize_db()
         asyncio.create_task(time_guard())
         await bot.start(TOKEN)
+    except discord.LoginError:
+        logging.critical("❌ Invalid bot token")
+        sys.exit(1)
     except Exception as e:
-        logging.critical(f"Fatal error: {e}")
-        sys.exit(1)  # Ensure Railway knows it crashed
+        logging.critical(f"💀 Fatal error: {str(e)}", exc_info=True)
+        sys.exit(1)
 
 if __name__ == "__main__":
     asyncio.run(main())
