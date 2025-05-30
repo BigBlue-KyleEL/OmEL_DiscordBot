@@ -141,6 +141,14 @@ class QuestActionButtons(View):
                 await interaction.response.send_message(codex_text, ephemeral=True)
                 return
 
+            await interaction.response.defer()  # Critical: Prevents timeout
+            try:
+                # Bypass cache by fetching fresh message
+                fresh_message = await interaction.channel.fetch_message(interaction.message.id)
+            except discord.NotFound:
+                await interaction.followup.send("⚠️ The scroll has already vanished!", ephemeral=True)
+                return
+
             # ✅ Capture all necessary data before deletion
             if not interaction.message.embeds:
                 await interaction.user.send("⚠️ The sacred parchment could not be recovered—lost to the winds of fate.")
@@ -156,11 +164,11 @@ class QuestActionButtons(View):
                     ephemeral=True
                 )
                 return
-            claimants = get_claimants(interaction.message.id)
+            claimants = get_claimants(fresh_message.id)
             sealer_name = interaction.user.display_name
 
             # 🗑️ Now it's safe to delete
-            await interaction.message.delete()
+            await fresh_message.delete()
 
             # 📜 Send to #oathbound-scrolls
             oathbound_channel = bot.get_channel(OATHBOUND_SCROLLS_CHANNEL_ID)
