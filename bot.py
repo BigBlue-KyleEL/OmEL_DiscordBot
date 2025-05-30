@@ -125,9 +125,9 @@ class QuestActionButtons(View):
             self.unclaim_button = Button(
                 label="Unclaim Quest",
                 style=discord.ButtonStyle.danger,
-                custom_id="unclaim_quest",
-                callback=self.unclaim_quest
+                custom_id="unclaim_quest"
             )
+            self.unclaim_button.callback = self.unclaim_quest
             self.add_item(self.unclaim_button)
 
         claim_message = get_claim_phrase()
