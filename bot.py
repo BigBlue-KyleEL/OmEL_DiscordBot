@@ -135,73 +135,65 @@ class QuestActionButtons(View):
         await interaction.followup.send(f"📜 {claim_message}", ephemeral=True)
 
     async def close_quest(self, interaction: discord.Interaction):
-        if interaction.user.id != self.author_id:
-            codex_text = get_codex_rule("Chapter IV, Line 42")
-            await interaction.response.send_message(codex_text, ephemeral=True)
-            return
+        try:  # Begin exception handling
+            if interaction.user.id != self.author_id:
+                codex_text = get_codex_rule("Chapter IV, Line 42")
+                await interaction.response.send_message(codex_text, ephemeral=True)
+                return
 
-        # Delete original quest message
-        await interaction.message.delete()
+            # ✅ Capture all necessary data before deletion
+            if not interaction.message.embeds:
+                await interaction.user.send("⚠️ The sacred parchment could not be recovered—lost to the winds of fate.")
+                return
 
-        # Prepare sealing content
-        sealer_name = interaction.user.display_name
-        sealed_phrase = get_sealing_phrase(sealer_name)
-
-        # Send log to oathbound-scrolls
-        oathbound_channel = bot.get_channel(OATHBOUND_SCROLLS_CHANNEL_ID)
-        if oathbound_channel:
-            # Recreate the embed with info from the deleted quest
             original_embed = interaction.message.embeds[0]
+            claimants = get_claimants(interaction.message.id)
+            sealer_name = interaction.user.display_name
+
+            # 🗑️ Now it's safe to delete
+            await interaction.message.delete()
+
+            # 📜 Send to #oathbound-scrolls
+            oathbound_channel = bot.get_channel(OATHBOUND_SCROLLS_CHANNEL_ID)
+            if not oathbound_channel:
+                raise ValueError("The Hall of Oathbound Scrolls remains shrouded in mystery—its gates unseen.")
+
             sealed_embed = discord.Embed(
                 title=f"📜 {original_embed.title}",
                 description=original_embed.description,
                 color=discord.Color.dark_green()
             )
+            sealed_embed.set_author(
+                name=original_embed.author.name,
+                icon_url=original_embed.author.icon_url
+            )
 
-            sealed_embed.set_author(name=original_embed.author.name, icon_url=original_embed.author.icon_url)
-            # Format the list of users who claimed and did NOT unclaim
-
-            claimants = get_claimants(interaction.message.id)
             if claimants:
                 gratitude_line = f"🪶 {get_gratitude_phrase()} {', '.join(claimants)}"
                 sealed_embed.add_field(name="—", value=gratitude_line, inline=False)
 
-            await oathbound_channel.send(content=sealed_phrase, embed=sealed_embed)
+            await oathbound_channel.send(content=get_sealing_phrase(sealer_name), embed=sealed_embed)
 
-            # 🪶 Lore-themed log entry
-            quest_title = original_embed.title
-            author_name = interaction.user.display_name
             logging.info(
-                f"🔒 The scroll '{quest_title}' has been sealed by {author_name}. "
+                f"🔒 The scroll '{original_embed.title}' has been sealed by {sealer_name}. "
                 f"Those who bore its burden: {', '.join(claimants) if claimants else 'None. A lonely tale etched in silence.'}"
             )
 
-        else:
-            await interaction.user.send("⚠️ Could not find the `#oathbound-scrolls` channel to archive the quest.")
+            # ✅ Send confirmation (only if interaction hasn't been responded to yet)
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "The quest has been sealed, its tale now bound within the annals of history.",
+                    ephemeral=True
+                )
 
-    async def unclaim_quest(self, interaction: discord.Interaction):
-        user = interaction.user
+        except Exception as e:
+            logging.error(f"Failed to seal quest: {str(e)}")
 
-        if user not in self.claimed_by:
-            await interaction.response.send_message("You haven’t claimed this Quest yet.", ephemeral=True)
-            return
-
-        # Remove user from claim list
-        self.claimed_by.remove(user)
-        self.update_claim_button_label()
-
-        # If no one is left, remove Unclaim button
-        if not self.claimed_by and self.unclaim_button:
-            self.remove_item(self.unclaim_button)
-            self.unclaim_button = None
-
-        await interaction.response.edit_message(view=self)
-
-        # Remove claimant from the database
-        remove_claimant(interaction.message.id, interaction.user.id)
-
-        unclaim_message = get_unclaim_phrase()
-        await interaction.followup.send(f"💭 {unclaim_message}", ephemeral=True)
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "⚠️ A disturbance in the flow of fate has prevented the sealing ritual. Seek guidance from the keepers of wisdom.",
+                    ephemeral=True
+                )
 
     def update_claim_button_label(self):
         if not self.claimed_by:
