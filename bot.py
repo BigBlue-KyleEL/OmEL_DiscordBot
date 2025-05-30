@@ -125,9 +125,9 @@ class QuestActionButtons(View):
             self.unclaim_button = Button(
                 label="Unclaim Quest",
                 style=discord.ButtonStyle.danger,
-                custom_id="unclaim_quest"
+                custom_id="unclaim_quest",
+                callback=self.unclaim_quest
             )
-            self.unclaim_button.callback = self.unclaim_quest
             self.add_item(self.unclaim_button)
 
         claim_message = get_claim_phrase()
@@ -211,6 +211,30 @@ class QuestActionButtons(View):
                     "⚠️ A disturbance in the flow of fate has prevented the sealing ritual. Seek guidance from the keepers of wisdom.",
                     ephemeral=True
                 )
+
+    async def unclaim_quest(self, interaction: discord.Interaction):
+        user = interaction.user
+
+        if user not in self.claimed_by:
+            await interaction.response.send_message("You haven’t claimed this Quest yet.", ephemeral=True)
+            return
+
+        # Remove user from claim list
+        self.claimed_by.remove(user)
+        self.update_claim_button_label()
+
+        # If no one is left, remove Unclaim button
+        if not self.claimed_by and self.unclaim_button:
+            self.remove_item(self.unclaim_button)
+            self.unclaim_button = None
+
+        await interaction.response.edit_message(view=self)
+
+        # Remove claimant from the database
+        remove_claimant(interaction.message.id, interaction.user.id)
+
+        unclaim_message = get_unclaim_phrase()
+        await interaction.followup.send(f"💭 {unclaim_message}", ephemeral=True)
 
     def update_claim_button_label(self):
         if not self.claimed_by:
