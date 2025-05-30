@@ -146,7 +146,16 @@ class QuestActionButtons(View):
                 await interaction.user.send("⚠️ The sacred parchment could not be recovered—lost to the winds of fate.")
                 return
 
-            original_embed = interaction.message.embeds[0]
+            # New (fetches fresh from Discord)
+            try:
+                fresh_message = await interaction.channel.fetch_message(interaction.message.id)
+                original_embed = fresh_message.embeds[0]
+            except discord.NotFound:
+                await interaction.response.send_message(
+                    "⚠️ The scroll has already vanished from this realm!",
+                    ephemeral=True
+                )
+                return
             claimants = get_claimants(interaction.message.id)
             sealer_name = interaction.user.display_name
 
