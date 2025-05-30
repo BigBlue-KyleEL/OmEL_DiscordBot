@@ -272,7 +272,7 @@ async def on_ready():
 
         # Register persistent views
         bot.add_view(QuestBoard())  # for the main "Enscribe a New Quest" button
-        bot.add_view(QuestActionButtons(message_id=0, author_id=0))  # Dummy author_id so Discord registers it
+        bot.add_view(QuestActionButtons(message_id=0, author_id=0))
 
         channel = bot.get_channel(EDICTS_CHANNEL_ID)
         if channel:
