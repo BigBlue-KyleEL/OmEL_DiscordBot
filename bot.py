@@ -8,7 +8,7 @@ import os
 import pytz
 import sys
 
-from db import initialize_db, add_claimant, remove_claimant, get_claimants
+from db import initialize_db, add_claimant, remove_claimant, get_claimants, create_quest
 from discord.ext import commands
 from discord.ui import View, Button, Modal, TextInput
 from dotenv import load_dotenv
@@ -22,7 +22,7 @@ GUILD_ID = int(os.getenv("GUILD_ID"))
 EDICTS_CHANNEL_ID = int(os.getenv("EDICTS_CHANNEL_ID"))
 HALL_OF_DEEDS_CHANNEL_ID = int(os.getenv("HALL_OF_DEEDS_CHANNEL_ID"))
 OATHBOUND_SCROLLS_CHANNEL_ID = int(os.getenv("OATHBOUND_SCROLLS_CHANNEL_ID"))
-
+AUTHORIZED_USER_ID = int(os.getenv("AUTHORIZED_USER_ID"))
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -31,6 +31,54 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.command(name="backfill")
+async def backfill_existing_quests(ctx):
+    if ctx.author.id != AUTHORIZED_USER_ID:
+        await ctx.send("🛡️ You are not permitted to use this command.")
+        return
+
+    await ctx.send("📜 Beginning quest backfill...")
+
+    hall_of_deeds = bot.get_channel(HALL_OF_DEEDS_CHANNEL_ID)
+    if hall_of_deeds is None:
+        await ctx.send("⚠️ Could not find the Hall of Deeds channel.")
+        return
+
+    new_entries = 0
+
+    async for message in hall_of_deeds.history(limit=None, oldest_first=True):
+        # Skip if the message wasn't sent by the bot
+        if message.author.id != bot.user.id:
+            continue
+
+        if not message.embeds:
+            continue  # Skip if no embed
+
+        embed = message.embeds[0]
+        title = embed.title
+        description = embed.description
+
+        if not title or not description:
+            continue
+
+        # Attempt to backfill
+        try:
+            create_quest(
+                author_id=None,  # Unknown
+                title=title,
+                description=description,
+                status="open",
+                message_id=message.id,
+                channel_id=hall_of_deeds.id
+            )
+            new_entries += 1
+        except Exception as e:
+            print(f"Skipping message {message.id}: {e}")
+            continue
+
+    await ctx.send(f"☁️ From the ashes of forgetfulness, {new_entries} olden Quest(s) have been reclaimed. Their Oaths shall not be lost again.")
+
 
 # Set up rotating log file — 100MB per file, unlimited backup files
 log_handler = RotatingFileHandler(
@@ -86,11 +134,40 @@ class QuestModal(Modal, title="Enscribe Your Quest"):
 
     async def on_submit(self, interaction: discord.Interaction):
         hall_of_deeds = bot.get_channel(HALL_OF_DEEDS_CHANNEL_ID)
-        embed = discord.Embed(title=self.quest_title.value, description=self.quest_description.value, color=discord.Color.gold())
-        embed.set_author(name=f"{interaction.user.display_name} has posted a Quest!", icon_url=interaction.user.display_avatar.url)
+
+        # 1. Create the quest embed
+        embed = discord.Embed(
+            title=self.quest_title.value,
+            description=self.quest_description.value,
+            color=discord.Color.gold()
+        )
+        embed.set_author(
+            name=f"{interaction.user.display_name} has posted a Quest!",
+            icon_url=interaction.user.display_avatar.url
+        )
+
+        # 2. Create the view
         view = QuestActionButtons(interaction.user.id)
-        await hall_of_deeds.send(embed=embed, view=view)
-        await interaction.response.send_message("🨶 Your Quest has been inscribed upon the Hall of Deeds.", ephemeral=True)
+
+        # 3. Send the quest message and capture it
+        quest_message = await hall_of_deeds.send(embed=embed, view=view)
+
+        # 4. Save the quest to DB
+        from db import create_quest  # Make sure this import is at the top of your file
+        create_quest(
+            author_id=interaction.user.id,
+            title=self.quest_title.value,
+            description=self.quest_description.value,
+            message_id=quest_message.id,
+            channel_id=hall_of_deeds.id
+        )
+
+        # 5. Ephemeral confirmation
+        await interaction.response.send_message(
+            "🨶 Your Quest has been inscribed upon the Hall of Deeds.",
+            ephemeral=True
+        )
+
 
 class QuestActionButtons(View):
     def __init__(self, author_id):

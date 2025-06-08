@@ -23,9 +23,32 @@ def initialize_db():
             PRIMARY KEY (quest_message_id, user_id)
         );
     """)
+    cur.execute("""
+            CREATE TABLE IF NOT EXISTS quests (
+                id SERIAL PRIMARY KEY,
+                author_id BIGINT,
+                title TEXT,
+                description TEXT,
+                status TEXT DEFAULT 'open',
+                message_id BIGINT UNIQUE,
+                channel_id BIGINT
+            );
+        """)
     conn.commit()
     cur.close()
     conn.close()
+
+def create_quest(author_id: int, title: str, description: str, message_id: int, channel_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO quests (author_id, title, description, message_id, channel_id)
+        VALUES (%s, %s, %s, %s, %s);
+    """, (author_id, title, description, message_id, channel_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
 
 
 def add_claimant(quest_message_id: int, user_id: int, display_name: str):
@@ -64,3 +87,4 @@ def get_claimants(quest_message_id: int):
     cur.close()
     conn.close()
     return [row['display_name'] for row in rows]
+
