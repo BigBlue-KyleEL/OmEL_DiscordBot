@@ -38,16 +38,18 @@ def initialize_db():
     cur.close()
     conn.close()
 
-def create_quest(author_id: int, title: str, description: str, message_id: int, channel_id: int):
+
+def create_quest(author_id: int, title: str, description: str, message_id: int, channel_id: int, status="open"):
     conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO quests (author_id, title, description, message_id, channel_id)
-        VALUES (%s, %s, %s, %s, %s);
-    """, (author_id, title, description, message_id, channel_id))
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO quests (author_id, title, description, message_id, channel_id, status)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (author_id, title, description, message_id, channel_id, status))
     conn.commit()
-    cur.close()
+    cursor.close()
     conn.close()
+
 
 
 
