@@ -14,6 +14,7 @@ from discord.ui import View, Button, Modal, TextInput
 from dotenv import load_dotenv
 from flavor import get_codex_rule, get_sealing_phrase, get_unclaim_phrase, get_claim_phrase, get_gratitude_phrase
 from logging.handlers import RotatingFileHandler
+from utils import force_seal_quest
 
 
 load_dotenv()
@@ -76,6 +77,7 @@ async def backfill_existing_quests(ctx):
         except Exception as e:
             print(f"Skipping message {message.id}: {e}")
             continue
+
 
     await ctx.send(f"☁️ From the ashes of forgetfulness, {new_entries} olden Quest(s) have been reclaimed. Their Oaths shall not be lost again.")
 
@@ -228,44 +230,8 @@ class QuestActionButtons(View):
             await interaction.response.send_message(codex_text, ephemeral=True)
             return
 
-        # Delete original quest message
-        await interaction.message.delete()
+        await force_seal_quest(interaction.message, author_name=interaction.user.display_name)
 
-        # Prepare sealing content
-        sealer_name = interaction.user.display_name
-        sealed_phrase = get_sealing_phrase(sealer_name)
-
-        # Send log to oathbound-scrolls
-        oathbound_channel = bot.get_channel(OATHBOUND_SCROLLS_CHANNEL_ID)
-        if oathbound_channel:
-            # Recreate the embed with info from the deleted quest
-            original_embed = interaction.message.embeds[0]
-            sealed_embed = discord.Embed(
-                title=f"📜 {original_embed.title}",
-                description=original_embed.description,
-                color=discord.Color.dark_green()
-            )
-
-            sealed_embed.set_author(name=original_embed.author.name, icon_url=original_embed.author.icon_url)
-            # Format the list of users who claimed and did NOT unclaim
-
-            claimants = get_claimants(interaction.message.id)
-            if claimants:
-                gratitude_line = f"🪶 {get_gratitude_phrase()} {', '.join(claimants)}"
-                sealed_embed.add_field(name="—", value=gratitude_line, inline=False)
-
-            await oathbound_channel.send(content=sealed_phrase, embed=sealed_embed)
-
-            # 🪶 Lore-themed log entry
-            quest_title = original_embed.title
-            author_name = interaction.user.display_name
-            logging.info(
-                f"🔒 The scroll '{quest_title}' has been sealed by {author_name}. "
-                f"Those who bore its burden: {', '.join(claimants) if claimants else 'None. A lonely tale etched in silence.'}"
-            )
-
-        else:
-            await interaction.user.send("⚠️ Could not find the `#oathbound-scrolls` channel to archive the quest.")
 
     async def unclaim_quest(self, interaction: discord.Interaction):
         user = interaction.user
