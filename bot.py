@@ -239,16 +239,19 @@ class QuestActionButtons(View):
         embed = message.embeds[0] if message.embeds else None
         author_name = embed.author.name if embed and embed.author else "Unknown Wanderer"
 
-        if interaction.user.id != self.author_id:
-            codex_text = get_codex_rule("Chapter IV, Line 42")
-            await interaction.response.send_message(codex_text, ephemeral=True)
-            return
-
         if self.author_id:
-            user = await bot.fetch_user(self.author_id)
-            author_name = user.display_name
+            # Quest has a known author — enforce author-only sealing
+            if interaction.user.id != self.author_id:
+                codex_text = get_codex_rule("Chapter IV, Line 42")
+                await interaction.response.send_message(codex_text, ephemeral=True)
+                return
         else:
-            author_name = "Unknown Wanderer"
+            # Legacy quest — only allow the authorized admin to seal
+            if interaction.user.id != AUTHORIZED_USER_ID:
+                await interaction.response.send_message("🛡️ Only the Archivist may seal this ancient quest.",
+                                                        ephemeral=True)
+                return
+
 
         print(f"[DEBUG] close_quest called with self.author_id = {self.author_id}")
         await force_seal_quest(bot, message, OATHBOUND_SCROLLS_CHANNEL_ID, author_name)
