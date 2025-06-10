@@ -48,9 +48,13 @@ async def backfill_existing_quests(ctx):
 
     new_entries = 0
 
+    print("🔁 Starting message history scan in #hall-of-deeds...")
     async for message in hall_of_deeds.history(limit=None, oldest_first=True):
+        print(f"🔍 Checking message ID: {message.id} from author: {message.author}")
+
         # Skip if the message wasn't sent by the bot
         if message.author.id != bot.user.id:
+            print(f"⛔ Skipped — not from bot: {message.author}")
             continue
 
         if not message.embeds:
