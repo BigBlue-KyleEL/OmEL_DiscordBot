@@ -252,10 +252,13 @@ class QuestActionButtons(View):
                                                         ephemeral=True)
                 return
 
-
         print(f"[DEBUG] close_quest called with self.author_id = {self.author_id}")
         await force_seal_quest(bot, message, OATHBOUND_SCROLLS_CHANNEL_ID, author_name)
-
+        # Sealing succeeded, send flavorful confirmation to the user
+        try:
+            await interaction.response.send_message(get_sealing_phrase(), ephemeral=True)
+        except discord.InteractionResponded:
+            await interaction.followup.send(get_sealing_phrase(), ephemeral=True)
 
     async def unclaim_quest(self, interaction: discord.Interaction):
         user = interaction.user
