@@ -156,8 +156,6 @@ class QuestModal(Modal, title="Enscribe Your Quest"):
 
         # 2. Create the view
         view = QuestActionButtons(author_id=interaction.user.id)
-        await interaction.channel.send(embed=embed, view=view)
-
 
         # 3. Send the quest message and capture it
         quest_message = await hall_of_deeds.send(embed=embed, view=view)
@@ -255,10 +253,11 @@ class QuestActionButtons(View):
         print(f"[DEBUG] close_quest called with self.author_id = {self.author_id}")
         await force_seal_quest(bot, message, OATHBOUND_SCROLLS_CHANNEL_ID, author_name)
         # Sealing succeeded, send flavorful confirmation to the user
+        sealer_name = interaction.user.display_name
         try:
-            await interaction.response.send_message(get_sealing_phrase(), ephemeral=True)
+            await interaction.response.send_message(get_sealing_phrase(sealer_name), ephemeral=True)
         except discord.InteractionResponded:
-            await interaction.followup.send(get_sealing_phrase(), ephemeral=True)
+            await interaction.followup.send(get_sealing_phrase(sealer_name), ephemeral=True)
 
     async def unclaim_quest(self, interaction: discord.Interaction):
         user = interaction.user
