@@ -1,4 +1,5 @@
 # utils.py
+import discord
 
 async def force_seal_quest(message: discord.Message, author_name: str = "Unknown Wanderer"):
     from main import bot  # Or wherever your bot is instantiated
