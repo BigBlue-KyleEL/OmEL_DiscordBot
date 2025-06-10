@@ -63,6 +63,8 @@ async def backfill_existing_quests(ctx):
         if not title or not description:
             continue
 
+        embed_author = embed.author.name if embed.author else "Unknown Wanderer"
+
         # Attempt to backfill
         try:
             create_quest(
@@ -225,12 +227,16 @@ class QuestActionButtons(View):
         await interaction.followup.send(f"📜 {claim_message}", ephemeral=True)
 
     async def close_quest(self, interaction: discord.Interaction):
+        message = interaction.message
+        embed = message.embeds[0] if message.embeds else None
+        author_name = embed.author.name if embed and embed.author else "Unknown Wanderer"
+
         if interaction.user.id != self.author_id:
             codex_text = get_codex_rule("Chapter IV, Line 42")
             await interaction.response.send_message(codex_text, ephemeral=True)
             return
 
-        await force_seal_quest(interaction.message, author_name=interaction.user.display_name)
+        await force_seal_quest(bot, message, OATHBOUND_SCROLLS_CHANNEL_ID, author_name)
 
 
     async def unclaim_quest(self, interaction: discord.Interaction):

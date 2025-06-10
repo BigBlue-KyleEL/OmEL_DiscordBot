@@ -1,14 +1,22 @@
 # utils.py
+
 import discord
+import logging
+from typing import Optional
 
-async def force_seal_quest(message: discord.Message, author_name: str = "Unknown Wanderer"):
-    from main import bot  # Or wherever your bot is instantiated
-    from constants import OATHBOUND_SCROLLS_CHANNEL_ID  # Adjust to your layout
-    from db import get_claimants
-    from lore import get_sealing_phrase, get_gratitude_phrase  # Your custom lore functions
+from db import get_claimants
+from flavor import get_sealing_phrase, get_gratitude_phrase
+# DO NOT import the bot or constants directly from bot.py — it causes circular issues
+# Instead, pass them in as parameters when calling this function
 
-    # Reconstruct and send to Oathbound Scrolls
-    oathbound_channel = bot.get_channel(OATHBOUND_SCROLLS_CHANNEL_ID)
+async def force_seal_quest(
+    bot,  # commands.Bot or discord.Bot depending on your setup
+    message: discord.Message,
+    oathbound_channel_id: int,
+    author_name: str = "Unknown Wanderer"
+):
+    # Get the channel to send the sealed message to
+    oathbound_channel = bot.get_channel(oathbound_channel_id)
     if not oathbound_channel:
         logging.warning("⚠️ Oathbound Scrolls channel not found.")
         return
@@ -23,20 +31,29 @@ async def force_seal_quest(message: discord.Message, author_name: str = "Unknown
         description=original_embed.description,
         color=discord.Color.dark_green()
     )
-    sealed_embed.set_author(name=original_embed.author.name, icon_url=original_embed.author.icon_url)
 
+    # Preserve the original embed author if available
+    if original_embed.author:
+        sealed_embed.set_author(
+            name=original_embed.author.name or "Unknown Wanderer",
+            icon_url=original_embed.author.icon_url or discord.Embed.Empty
+        )
+
+    # Fetch claimants from the database
     claimants = get_claimants(message.id)
     if claimants:
         gratitude_line = f"🪶 {get_gratitude_phrase()} {', '.join(claimants)}"
         sealed_embed.add_field(name="—", value=gratitude_line, inline=False)
 
+    # Sealing phrase
     sealed_phrase = get_sealing_phrase(author_name)
     await oathbound_channel.send(content=sealed_phrase, embed=sealed_embed)
+
+    # Delete original message from Hall of Deeds
     await message.delete()
 
-    # 🪶 Lore-themed log entry
-    quest_title = original_embed.title
+    # Logging
     logging.info(
-        f"🔒 The scroll '{quest_title}' has been sealed by {author_name}. "
+        f"🔒 The scroll '{original_embed.title}' has been sealed by {author_name}. "
         f"Those who bore its burden: {', '.join(claimants) if claimants else 'None. A lonely tale etched in silence.'}"
     )
