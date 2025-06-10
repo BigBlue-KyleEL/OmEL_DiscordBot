@@ -32,12 +32,12 @@ async def force_seal_quest(
         color=discord.Color.dark_green()
     )
 
-    # Preserve the original embed author if available
-    if original_embed.author:
-        sealed_embed.set_author(
-            name=original_embed.author.get("name", "Unknown Wanderer"),
-            icon_url=original_embed.author.get("icon_url", discord.Embed.Empty)
-        )
+    # Preserve the original embed author if available (dict-style compatibility)
+    author_info = original_embed.author or {}
+    sealed_embed.set_author(
+        name=author_info.get("name", "Unknown Wanderer"),
+        icon_url=author_info.get("icon_url", discord.Embed.Empty)
+    )
 
     # Fetch claimants from the database
     claimants = get_claimants(message.id)
