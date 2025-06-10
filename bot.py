@@ -155,7 +155,9 @@ class QuestModal(Modal, title="Enscribe Your Quest"):
         )
 
         # 2. Create the view
-        view = QuestActionButtons(interaction.user.id)
+        view = QuestActionButtons(author_id=interaction.user.id)
+        await interaction.channel.send(embed=embed, view=view)
+
 
         # 3. Send the quest message and capture it
         quest_message = await hall_of_deeds.send(embed=embed, view=view)
@@ -181,6 +183,7 @@ class QuestActionButtons(View):
     def __init__(self, author_id):
         super().__init__(timeout=None)
         self.author_id = author_id
+        print(f"[DEBUG] QuestView initialized with author_id: {author_id}")
         self.claimed_by = []
         self.claim_button = Button(
             label="Claim Quest",
@@ -198,6 +201,7 @@ class QuestActionButtons(View):
         self.add_item(self.claim_button)
         self.add_item(self.close_button)
         self.unclaim_button = None  # Prevent dangling buttons
+
 
     async def claim_quest(self, interaction: discord.Interaction):
         user = interaction.user
@@ -240,6 +244,13 @@ class QuestActionButtons(View):
             await interaction.response.send_message(codex_text, ephemeral=True)
             return
 
+        if self.author_id:
+            user = await bot.fetch_user(self.author_id)
+            author_name = user.display_name
+        else:
+            author_name = "Unknown Wanderer"
+
+        print(f"[DEBUG] close_quest called with self.author_id = {self.author_id}")
         await force_seal_quest(bot, message, OATHBOUND_SCROLLS_CHANNEL_ID, author_name)
 
 
