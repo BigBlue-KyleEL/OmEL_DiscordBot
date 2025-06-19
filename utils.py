@@ -32,16 +32,10 @@ async def force_seal_quest(
         color=discord.Color.dark_green()
     )
 
-    # Preserve the original embed author if available (dict-style compatibility)
-    if isinstance(original_embed.author, dict):
-        name = original_embed.author.get("name", "Unknown Wanderer")
-        icon_url = original_embed.author.get("icon_url", discord.Embed.Empty)
-    elif original_embed.author is not None:
-        name = getattr(original_embed.author, "name", "Unknown Wanderer")
-        icon_url = getattr(original_embed.author, "icon_url", discord.Embed.Empty)
-    else:
-        name = "Unknown Wanderer"
-        icon_url = discord.Embed.Empty
+    sealed_embed.set_author(
+        name="Om’EL",
+        icon_url=bot.user.display_avatar.url
+    )
 
     sealed_embed.set_author(name=name, icon_url=icon_url)
 
