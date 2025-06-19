@@ -36,6 +36,7 @@ async def force_seal_quest(
         name="Om’EL",
         icon_url=bot.user.display_avatar.url
     )
+    print(f"[DEBUG] Om'EL avatar URL: {bot.user.display_avatar.url}")
 
     # Fetch claimants from the database
     claimants = get_claimants(message.id)
@@ -55,3 +56,4 @@ async def force_seal_quest(
         f"🔒 The scroll '{original_embed.title}' has been sealed by {author_name}. "
         f"Those who bore its burden: {', '.join(claimants) if claimants else 'None. A lonely tale etched in silence.'}"
     )
+    logging.info(f"🧪 Sealing quest using Om'EL avatar URL: {bot.user.display_avatar.url}")
