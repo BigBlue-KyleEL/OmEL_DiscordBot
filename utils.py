@@ -37,8 +37,6 @@ async def force_seal_quest(
         icon_url=bot.user.display_avatar.url
     )
 
-    sealed_embed.set_author(name=name, icon_url=icon_url)
-
     # Fetch claimants from the database
     claimants = get_claimants(message.id)
     if claimants:
